@@ -49,3 +49,13 @@ export interface Order {
   date: number;
   __v: number;
 }
+
+export interface ProductType {
+  _id: string;
+  name: string;
+  description: string;
+  offerPrice: number;
+  price: number;
+  image: string[];
+  category: string;
+}

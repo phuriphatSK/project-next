@@ -1,17 +1,14 @@
 "use client";
 import { productsDummyData, userDummyData } from "../assets/assets";
 
-type Product = {
-  _id: string;
-  offerPrice: number;
-  // Add other properties of Product as needed
-};
 import { useUser } from "@clerk/nextjs";
 import type { UserResource } from "@clerk/types"; // ✅ เพิ่มตรงนี้
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
+import { Product, ProductType } from "../app/type";
 
 type AppContextType = {
+  id: string;
   user: UserResource | null | undefined;
   currency: string | undefined;
   router: ReturnType<typeof useRouter>;
@@ -23,10 +20,12 @@ type AppContextType = {
   fetchProductData: () => Promise<void>;
   cartItems: Record<string, number>;
   setCartItems: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  productData: ProductType | null;
   addToCart: (itemId: string) => Promise<void>;
   updateCartQuantity: (itemId: string, quantity: number) => Promise<void>;
   getCartCount: () => number;
   getCartAmount: () => number;
+  setProductData: React.Dispatch<React.SetStateAction<ProductType | null>>;
 };
 
 export const AppContext = createContext<AppContextType | null>(null);
@@ -36,6 +35,7 @@ export const useAppContext = () => {
 };
 
 export const AppProvider = ({ children }: { children: React.ReactNode }) => {
+  const { id } = useParams<{ id: string }>(); // Specify the type of the params
   const [products, setProducts] = useState<Product[]>([]);
   const currency = process.env.NEXT_PUBLIC_CURRENCY;
   const router = useRouter();
@@ -46,8 +46,33 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [isSeller, setIsSeller] = useState(true);
   const [cartItems, setCartItems] = useState<Record<string, number>>({});
 
+  const [productData, setProductData] = useState<ProductType | null>(null);
+
   const fetchProductData = async () => {
-    setProducts(productsDummyData);
+    setProducts(
+      productsDummyData.map((product) => ({
+        ...product,
+        image: Array.isArray(product.image) ? product.image : [product.image],
+      }))
+    );
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const fetchProductDataid = async () => {
+    const product = products.find((product) => product._id === id);
+    setProductData(
+      product
+        ? {
+            ...product,
+            description: "", // Provide default or fetched values
+            price: product.offerPrice, // Map offerPrice to price
+            category: "", // Provide default or fetched values
+            image: Array.isArray(product.image)
+              ? product.image
+              : [product.image], // Ensure image is an array
+          }
+        : null
+    );
   };
 
   const fetchUserData = async () => {
@@ -108,7 +133,14 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     fetchUserData();
   }, []);
 
+  useEffect(() => {
+    fetchProductDataid();
+  }, [fetchProductDataid, id, products.length]);
+
   const value = {
+    productData,
+    setProductData,
+    id,
     user,
     currency,
     router,
